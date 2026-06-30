@@ -34,8 +34,26 @@ public class OpenShockControllerBase : ControllerBase
     [NonAction]
     protected string? GetCurrentCookieDomain()
     {
-        var cookieDomains = HttpContext.RequestServices.GetRequiredService<FrontendOptions>().CookieDomains;
-        return DomainUtils.GetBestMatchingCookieDomain(HttpContext.Request.Host.Host, cookieDomains);
+        var options = HttpContext.RequestServices
+            .GetRequiredService<FrontendOptions>();
+
+        var host = HttpContext.Request.Host.Host;
+
+        var domain = DomainUtils.GetBestMatchingCookieDomain(host, options.CookieDomains);
+
+        if (domain != null)
+            return domain;
+
+        // HOTFIX:
+        // Wenn nur eine Cookie-Domain konfiguriert ist,
+        // verwende diese als Fallba ck.
+        if (options.CookieDomains.Count == 1)
+            {
+                foreach (var cookieDomain in options.CookieDomains)
+                    return cookieDomain;
+            }
+
+        return null;
     }
 
     [NonAction]
@@ -50,8 +68,7 @@ public class OpenShockControllerBase : ControllerBase
             Expires = DateTimeOffset.UtcNow.Add(Duration.LoginSessionLifetime),
             Secure = true,
             HttpOnly = true,
-            SameSite = SameSiteMode.Lax,
-            Domain = domain
+            SameSite = SameSiteMode.Lax
         });
     }
 
